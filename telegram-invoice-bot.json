@@ -1,0 +1,1297 @@
+{
+  "name": "Telegram Invoice Bot",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {},
+        "chatId": "",
+        "text": "",
+        "documentURL": ""
+      },
+      "id": "92a6487b-8ea9-46fa-bde6-84ae47e19c3a",
+      "name": "Telegram Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -2448,
+        192
+      ],
+      "webhookId": "telegram-facturas-webhook",
+      "credentials": {
+        "telegramApi": {
+          "id": "TELEGRAM_CREDENTIAL_ID",
+          "name": "Telegram Facturas"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "cond-has-voice",
+              "leftValue": "={{ $json.message.voice.file_id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {
+          "looseTypeValidation": true
+        },
+        "chatId": "",
+        "text": "",
+        "documentURL": ""
+      },
+      "id": "747587dd-a183-40d9-99e8-c4816758f80f",
+      "name": "Is Audio?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -2208,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=https://api.telegram.org/botTU_TELEGRAM_BOT_TOKEN/getFile",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "file_id",
+              "value": "={{ $json.message.voice.file_id }}"
+            }
+          ]
+        },
+        "options": {},
+        "chatId": "",
+        "text": "",
+        "documentURL": ""
+      },
+      "id": "0cd6a22e-30e8-4dfc-a9b9-a6b72df4327f",
+      "name": "Get File Path",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1968,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=https://api.telegram.org/file/botTU_TELEGRAM_BOT_TOKEN/{{ $json.result.file_path }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        },
+        "chatId": "",
+        "text": "",
+        "documentURL": ""
+      },
+      "id": "f49db43b-0c13-4b5a-a825-c7c97dc08f2b",
+      "name": "Download Audio",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1744,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first();\nconst text = item.json.text || '';\nconst chat_id = $('Telegram Trigger').first().json.message.chat.id;\nreturn [{ json: { texto: text, chat_id } }];",
+        "chatId": "",
+        "text": "",
+        "documentURL": ""
+      },
+      "id": "3c9d58cc-7008-4f30-93dc-965c3b3d1b1e",
+      "name": "Merge Text (audio)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1296,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const msg = $json.message;\nconst text = msg.text || '';\nconst chat_id = msg.chat.id;\nreturn [{ json: { texto: text, chat_id } }];",
+        "chatId": "",
+        "text": "",
+        "documentURL": ""
+      },
+      "id": "62a7d59b-41b6-49ed-90e8-6f233b51c8d2",
+      "name": "Extract Text",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1648,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "",
+        "text": "",
+        "documentURL": ""
+      },
+      "id": "d227d483-328a-4d19-9969-be790bed02d6",
+      "name": "Merge Routes",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        -1072,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $json.output?.[0]?.content?.[0]?.text || $json.text || '';\nlet parsed;\ntry {\n  const jsonMatch = raw.match(/\\{[\\s\\S]*\\}/);\n  parsed = JSON.parse(jsonMatch[0]);\n} catch(e) {\n  parsed = { accion: 'desconocido', datos: {}, confianza: 'baja' };\n}\nconst prev = $('Unir rutas').first().json;\nreturn [{ json: { ...parsed, chat_id: prev.chat_id, texto_original: prev.texto } }];",
+        "chatId": "",
+        "text": "",
+        "documentURL": ""
+      },
+      "id": "40b04771-6ef3-407a-8a1e-7f838c64374f",
+      "name": "Parse JSON Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -528,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "route-cliente",
+              "leftValue": "={{ $json.accion }}",
+              "rightValue": "cliente",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {},
+        "chatId": "",
+        "text": "",
+        "documentURL": ""
+      },
+      "id": "c35ca896-7b84-4a72-99ce-84f117b8a314",
+      "name": "Is Customer?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -288,
+        -64
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false
+          },
+          "conditions": [
+            {
+              "id": "route-producto",
+              "leftValue": "={{ $json.accion }}",
+              "rightValue": "producto",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {},
+        "chatId": "",
+        "text": "",
+        "documentURL": ""
+      },
+      "id": "761f7262-cd5d-4721-9fae-8f64d79eba47",
+      "name": "Is Product?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -288,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "route-factura",
+              "leftValue": "={{ $json.accion }}",
+              "rightValue": "factura",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {},
+        "chatId": "",
+        "text": "",
+        "documentURL": ""
+      },
+      "id": "72d41fab-bb9a-4722-989b-1c166a0f09f6",
+      "name": "Is Invoice?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -288,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "TU_GOOGLE_SHEET_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Customers",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "ID": "={{ 'CLI-' + $now.toFormat('yyyyMMdd') + '-' + Math.floor(Math.random()*1000) }}",
+            "Nombre": "={{ $json.datos.nombre }}",
+            "Empresa": "={{ $json.datos.empresa }}",
+            "Email": "={{ $json.datos.email }}",
+            "Telefono": "={{ \"'\" + (() => { const t = ($json.datos.telefono || '').toString().replace(/\\s/g,''); const num = t.startsWith('+') ? t : '+34' + t; return num.replace(/(\\+\\d{2})(\\d{3})(\\d{3})(\\d{3})/, '$1 $2 $3 $4'); })() }}",
+            "Direccion": "={{ $json.datos.direccion }}",
+            "Fecha_Alta": "={{ (() => { const f = $json.datos.fecha_alta; if (!f) return $now.toFormat('dd/MM/yyyy'); const parts = f.split('/'); return parts[0].padStart(2,'0') + '/' + parts[1].padStart(2,'0') + '/' + parts[2]; })() }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "ID",
+              "displayName": "ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Nombre",
+              "displayName": "Nombre",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Empresa",
+              "displayName": "Empresa",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Telefono",
+              "displayName": "Telefono",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Direccion",
+              "displayName": "Direccion",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Fecha_Alta",
+              "displayName": "Fecha_Alta",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {},
+        "chatId": "",
+        "text": "",
+        "documentURL": ""
+      },
+      "id": "518cea70-8aec-4d37-8d5a-4df0d5d8b569",
+      "name": "Create Customer in Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [
+        0,
+        -80
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "GOOGLE_SHEETS_CREDENTIAL_ID",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "TU_GOOGLE_SHEET_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Products",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "ID": "={{ 'PRD-' + $now.toFormat('yyyyMMdd') + '-' + Math.floor(Math.random()*1000) }}",
+            "Nombre": "={{ $json.datos.nombre }}",
+            "Descripcion": "={{ $json.datos.descripcion }}",
+            "Precio": "={{ $json.datos.precio }}",
+            "Unidad": "={{ $json.datos.unidad || 'ud' }}",
+            "IVA": "={{ ($json.datos.iva || 21) / 100 }}",
+            "Fecha_Alta": "={{ $now.toFormat('dd/MM/yyyy') }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "ID",
+              "displayName": "ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Nombre",
+              "displayName": "Nombre",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Descripcion",
+              "displayName": "Descripcion",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Precio",
+              "displayName": "Precio",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Unidad",
+              "displayName": "Unidad",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "IVA",
+              "displayName": "IVA",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Fecha_Alta",
+              "displayName": "Fecha_Alta",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {},
+        "chatId": "",
+        "text": "",
+        "documentURL": ""
+      },
+      "id": "c2754ad5-65db-4166-ad5e-76b3885617d8",
+      "name": "Create Product in Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [
+        0,
+        96
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "GOOGLE_SHEETS_CREDENTIAL_ID",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "TU_GOOGLE_SHEET_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Customers",
+          "cachedResultUrl": ""
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "Nombre",
+              "lookupValue": "={{ $json.datos.cliente_nombre }}"
+            }
+          ]
+        },
+        "options": {},
+        "chatId": "",
+        "text": "",
+        "documentURL": ""
+      },
+      "id": "7eec46f6-272c-4a76-84de-65676e8c7745",
+      "name": "Find Customer",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [
+        0,
+        288
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "GOOGLE_SHEETS_CREDENTIAL_ID",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const cliente = $('Buscar cliente').first().json;\nconst datos = $('Parsear respuesta JSON').first().json.datos;\nconst productos = datos.productos || [];\n\nconst numero_factura = 'FAC-' + $now.toFormat('yyyy') + '-' + $now.toMillis();\nconst fecha = $now.toFormat('dd/MM/yyyy');\n\nlet base_imponible = 0;\nlet lineas = [];\n\nproductos.forEach((p, i) => {\n  const precio = parseFloat(p.precio || 0);\n  const cantidad = parseInt(p.cantidad || 1);\n  const subtotal = precio * cantidad;\n  base_imponible += subtotal;\n  lineas.push(`${p.nombre} x${cantidad} — ${precio.toFixed(2)}€/ud = ${subtotal.toFixed(2)}€`);\n});\n\nconst iva = base_imponible * 0.21;\nconst total = base_imponible + iva;\n\nreturn [{\n  json: {\n    numero_factura,\n    fecha,\n    cliente_nombre: cliente.Nombre || datos.cliente_nombre,\n    cliente_empresa: cliente.Empresa || '',\n    cliente_email: cliente.Email || '',\n    cliente_direccion: cliente.Direccion || '',\n    lineas: lineas.join('\\n'),\n    base_imponible: base_imponible.toFixed(2),\n    iva: iva.toFixed(2),\n    total: total.toFixed(2),\n    notas: datos.notas || '',\n    chat_id: $('Parsear respuesta JSON').first().json.chat_id\n  }\n}];",
+        "chatId": "",
+        "text": "",
+        "documentURL": ""
+      },
+      "id": "318d26dc-03e0-4488-b9d3-9595851ac72a",
+      "name": "Calculate Invoice",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        288
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "copy",
+        "fileId": {
+          "__rl": true,
+          "value": "TU_GOOGLE_DOCS_TEMPLATE_ID",
+          "mode": "id"
+        },
+        "name": "={{ 'Factura ' + $json.numero_factura + ' - ' + $json.cliente_nombre }}",
+        "sameFolder": false,
+        "driveId": {
+          "__rl": true,
+          "value": "My Drive",
+          "mode": "list",
+          "cachedResultName": "My Drive",
+          "cachedResultUrl": "https://drive.google.com/drive/my-drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "TU_GOOGLE_DRIVE_FOLDER_ID",
+          "mode": "list",
+          "cachedResultName": "Invoices BOT",
+          "cachedResultUrl": ""
+        },
+        "options": {},
+        "chatId": "",
+        "text": "",
+        "documentURL": ""
+      },
+      "id": "b02cd285-8669-411a-9bbd-3d124f1644ab",
+      "name": "Create Google Docs Document",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        464,
+        288
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "GOOGLE_DRIVE_CREDENTIAL_ID",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "TU_GOOGLE_SHEET_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Invoices",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Numero": "={{ $('Calcular factura').first().json.numero_factura }}",
+            "Fecha": "={{ $('Calcular factura').first().json.fecha }}",
+            "Cliente": "={{ $('Calcular factura').first().json.cliente_nombre }}",
+            "Base_Imponible": "={{ $('Calcular factura').first().json.base_imponible }}",
+            "IVA": "={{ $('Calcular factura').first().json.iva }}",
+            "Total": "={{ $('Calcular factura').first().json.total }}",
+            "Doc_URL": "={{ $('Crear documento Google Docs').first().json.id ? 'https://docs.google.com/document/d/' + $('Crear documento Google Docs').first().json.id : '' }}",
+            "Estado": "Emitida"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Numero",
+              "displayName": "Numero",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Fecha",
+              "displayName": "Fecha",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Cliente",
+              "displayName": "Cliente",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Base_Imponible",
+              "displayName": "Base_Imponible",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "IVA",
+              "displayName": "IVA",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Total",
+              "displayName": "Total",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Doc_URL",
+              "displayName": "Doc_URL",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Estado",
+              "displayName": "Estado",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {},
+        "chatId": "",
+        "text": "",
+        "documentURL": ""
+      },
+      "id": "00dc5d54-dcba-41e0-bb71-00fefa673cb1",
+      "name": "Save Invoice in Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [
+        896,
+        288
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "GOOGLE_SHEETS_CREDENTIAL_ID",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Parsear respuesta JSON').first().json.chat_id }}",
+        "text": "=✅ *Customer created successfully*\n\nName: {{ .first().json.datos.nombre }}\nCompany: {{ .first().json.datos.empresa }}\nEmail: {{ .first().json.datos.email }}\nPhone: {{ .first().json.datos.telefono }}",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "Markdown"
+        },
+        "documentURL": ""
+      },
+      "id": "ed226e45-761a-49dc-9ddd-d50d33824a95",
+      "name": "Reply: Customer Created",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        224,
+        -80
+      ],
+      "webhookId": "0fd9461a-9c49-4620-b211-e51df0cbfc4d",
+      "credentials": {
+        "telegramApi": {
+          "id": "TELEGRAM_CREDENTIAL_ID",
+          "name": "Telegram Facturas"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Parsear respuesta JSON').first().json.chat_id }}",
+        "text": "=✅ *Product created successfully*\n\nName: {{ .first().json.datos.nombre }}\nPrice: {{ .first().json.datos.precio }}€\nDescription: {{ .first().json.datos.descripcion }}\nVAT: {{ .first().json.datos.iva || 21 }}%",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "Markdown"
+        },
+        "documentURL": ""
+      },
+      "id": "3501014e-3d63-42ad-bac4-381c4d81a03a",
+      "name": "Reply: Product Created",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        224,
+        96
+      ],
+      "webhookId": "7cddaa4d-df97-4d7e-83ef-6d63a6649b2d",
+      "credentials": {
+        "telegramApi": {
+          "id": "TELEGRAM_CREDENTIAL_ID",
+          "name": "Telegram Facturas"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Calcular factura').first().json.chat_id }}",
+        "text": "=✅ *Invoice generated*\n\nNumber: `{{ .first().json.numero_factura }}`\nCustomer: {{ .first().json.cliente_nombre }}\nSubtotal: {{ .first().json.base_imponible }}€\nVAT (21%): {{ .first().json.iva }}€\n*Total: {{ .first().json.total }}€*\n\n📄 [View document]({{ .first().json.Doc_URL }})",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "Markdown"
+        },
+        "documentURL": ""
+      },
+      "id": "004125de-d704-4cf9-b26b-2f928857cf44",
+      "name": "Reply: Invoice Created",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1104,
+        288
+      ],
+      "webhookId": "14f8f386-8774-4fa6-84db-01c47e9105c5",
+      "credentials": {
+        "telegramApi": {
+          "id": "TELEGRAM_CREDENTIAL_ID",
+          "name": "Telegram Facturas"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chat_id }}",
+        "text": "=❓ I could not understand your request. Please clearly indicate if you want to:\n\n• *Create customer*: name, company, email, phone\n• *Create product*: name, price, description\n• *Create invoice*: customer + products to bill\n\nYour message received:\n_{{ .texto_original }}_",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        },
+        "documentURL": ""
+      },
+      "id": "e5288b22-a82c-44c9-90b1-e03643a332ff",
+      "name": "Reply: Not Understood",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        464
+      ],
+      "webhookId": "1a83ba10-4bba-41bd-b21a-359915b6f306",
+      "credentials": {
+        "telegramApi": {
+          "id": "TELEGRAM_CREDENTIAL_ID",
+          "name": "Telegram Facturas"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "audio",
+        "operation": "transcribe",
+        "options": {},
+        "chatId": "",
+        "text": "",
+        "documentURL": ""
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.1,
+      "position": [
+        -1520,
+        80
+      ],
+      "id": "2e7f34f7-1570-44d2-9cdf-5ab59c9a7801",
+      "name": "Transcribe a recording",
+      "credentials": {
+        "openAiApi": {
+          "id": "OPENAI_CREDENTIAL_ID",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4O-MINI"
+        },
+        "responses": {
+          "values": [
+            {
+              "role": "system",
+              "content": "=You are a classification assistant. Analyze the user's message and determine if they want to:\n1. Create a CUSTOMER (mentions name, company, email, phone of a new customer)\n2. Create a PRODUCT (mentions product name, price, description, stock)\n3. Create an INVOICE (mentions invoice, charge, bill, existing customer + products)\n\nToday is {{ .toFormat('dd/MM/yyyy') }}. Use this year when the user says 'this year'.\n\nReply ONLY with a JSON with no additional text:\n{\n  \"accion\": \"cliente\" | \"producto\" | \"factura\" | \"desconocido\",\n  \"datos\": {\n    // For customer: id (optional), nombre, empresa, email, telefono, direccion, fecha_alta (dd/MM/yyyy format, leave empty if not specified)\n    // For product: nombre, descripcion, precio, unidad, iva\n    // For invoice: cliente_nombre, productos (array with nombre, cantidad, precio), notas\n  },\n  \"confianza\": \"alta\" | \"media\" | \"baja\"\n}"
+            },
+            {
+              "content": "={{ $json.texto }}"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {},
+        "chatId": "",
+        "text": "",
+        "documentURL": ""
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.1,
+      "position": [
+        -864,
+        192
+      ],
+      "id": "26cc4bd9-6fad-43a0-af45-a6d21d92ed9f",
+      "name": "Message a model",
+      "credentials": {
+        "openAiApi": {
+          "id": "OPENAI_CREDENTIAL_ID",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "682d7b8c-d13a-4c8e-a8a2-984e88875905",
+              "leftValue": "={{ $json.accion }}",
+              "rightValue": "desconocido",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {},
+        "chatId": "",
+        "text": "",
+        "documentURL": ""
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -288,
+        480
+      ],
+      "id": "14fb7684-2cc3-478e-b323-8fc18680f365",
+      "name": "None"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentURL": "={{ $json.id }}",
+        "actionsUi": {
+          "actionFields": [
+            {
+              "action": "replaceAll",
+              "text": "{{NUMERO_FACTURA}}",
+              "replaceText": "={{ $('Calcular factura').first().json.numero_factura }}"
+            },
+            {
+              "action": "replaceAll",
+              "text": "{{FECHA}}",
+              "replaceText": "={{ $('Calcular factura').first().json.fecha }}"
+            },
+            {
+              "action": "replaceAll",
+              "text": "{{CLIENTE_NOMBRE}}",
+              "replaceText": "={{ $('Calcular factura').first().json.cliente_nombre }}"
+            },
+            {
+              "action": "replaceAll",
+              "text": "{{CLIENTE_EMPRESA}}",
+              "replaceText": "={{ $('Calcular factura').first().json.cliente_empresa }}"
+            },
+            {
+              "action": "replaceAll",
+              "text": "{{CLIENTE_EMAIL}}",
+              "replaceText": "={{ $('Calcular factura').first().json.cliente_email }}"
+            },
+            {
+              "action": "replaceAll",
+              "text": "{{CLIENTE_DIRECCION}}",
+              "replaceText": "={{ $('Calcular factura').first().json.cliente_direccion }}"
+            },
+            {
+              "action": "replaceAll",
+              "text": "{{LINEAS}}",
+              "replaceText": "={{ $('Calcular factura').first().json.lineas }}"
+            },
+            {
+              "action": "replaceAll",
+              "text": "{{BASE_IMPONIBLE}}",
+              "replaceText": "={{ $('Calcular factura').first().json.base_imponible }}"
+            },
+            {
+              "action": "replaceAll",
+              "text": "{{IVA}}",
+              "replaceText": "={{ $('Calcular factura').first().json.iva }}"
+            },
+            {
+              "action": "replaceAll",
+              "text": "{{TOTAL}}",
+              "replaceText": "={{ $('Calcular factura').first().json.total }}"
+            },
+            {
+              "action": "replaceAll",
+              "text": "{{NOTAS}}",
+              "replaceText": "={{ $('Calcular factura').first().json.notas }}"
+            }
+          ]
+        },
+        "chatId": "",
+        "text": ""
+      },
+      "type": "n8n-nodes-base.googleDocs",
+      "typeVersion": 2,
+      "position": [
+        688,
+        288
+      ],
+      "id": "2d64306f-b6c9-42fe-b901-ac74acf0c59d",
+      "name": "Update a document",
+      "credentials": {
+        "googleDocsOAuth2Api": {
+          "id": "GOOGLE_DOCS_CREDENTIAL_ID",
+          "name": "Google Docs account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Is Audio?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Audio?": {
+      "main": [
+        [
+          {
+            "node": "Get File Path",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Extract Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get File Path": {
+      "main": [
+        [
+          {
+            "node": "Download Audio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Text (audio)": {
+      "main": [
+        [
+          {
+            "node": "Merge Routes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Text": {
+      "main": [
+        [
+          {
+            "node": "Merge Routes",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Parse JSON Response": {
+      "main": [
+        [
+          {
+            "node": "Is Customer?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Is Product?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Is Invoice?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "None",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Customer?": {
+      "main": [
+        [
+          {
+            "node": "Create Customer in Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Product?": {
+      "main": [
+        [
+          {
+            "node": "Create Product in Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Invoice?": {
+      "main": [
+        [
+          {
+            "node": "Find Customer",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Create Customer in Sheets": {
+      "main": [
+        [
+          {
+            "node": "Reply: Customer Created",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Product in Sheets": {
+      "main": [
+        [
+          {
+            "node": "Reply: Product Created",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Customer": {
+      "main": [
+        [
+          {
+            "node": "Calculate Invoice",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calculate Invoice": {
+      "main": [
+        [
+          {
+            "node": "Create Google Docs Document",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Google Docs Document": {
+      "main": [
+        [
+          {
+            "node": "Update a document",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Invoice in Sheets": {
+      "main": [
+        [
+          {
+            "node": "Reply: Invoice Created",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Audio": {
+      "main": [
+        [
+          {
+            "node": "Transcribe a recording",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Transcribe a recording": {
+      "main": [
+        [
+          {
+            "node": "Merge Text (audio)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Routes": {
+      "main": [
+        [
+          {
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model": {
+      "main": [
+        [
+          {
+            "node": "Parse JSON Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "None": {
+      "main": [
+        [
+          {
+            "node": "Reply: Not Understood",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update a document": {
+      "main": [
+        [
+          {
+            "node": "Save Invoice in Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "timezone": "Europe/Madrid",
+    "callerPolicy": "workflowsFromSameOwner",
+    "executionTimeout": -1,
+    "availableInMCP": false
+  },
+  "versionId": "6ced78bc-f4a1-4371-b3a4-f986fb90f53a",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "YOUR_INSTANCE_ID"
+  },
+  "id": "YOUR_WORKFLOW_ID",
+  "tags": []
+}
